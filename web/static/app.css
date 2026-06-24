@@ -1,0 +1,9 @@
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: inline; }
+.htmx-request.htmx-indicator { display: inline; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+body { background-image: radial-gradient(circle at 50% 0%, rgba(16,185,129,0.06), transparent 60%); }

@@ -1,0 +1,32 @@
+{{range .Results}}
+  <div class="border border-slate-800 rounded-lg p-4 bg-slate-900/50 flex gap-4">
+    {{if .Thumbnail}}<img src="{{.Thumbnail}}" class="w-32 h-20 object-cover rounded" />{{end}}
+    <div class="flex-1 min-w-0">
+      {{if .Error}}
+        <p class="text-red-400 text-sm">⚠ {{.URL}}</p>
+        <p class="text-red-300 text-xs mt-1">{{.Error}}</p>
+      {{else}}
+        <p class="font-bold text-sm truncate">{{.Title}}</p>
+        <p class="text-slate-500 text-xs">{{.Uploader}} &middot; {{.Resolution}} &middot; {{.Duration}}s</p>
+        <form hx-post="/api/download" hx-target="#job-list" hx-swap="innerHTML" class="mt-2 flex flex-wrap items-center gap-2">
+          <input type="hidden" name="url" value="{{.URL}}" />
+          {{if .Formats}}
+          <select name="format_id" class="bg-slate-950 border border-slate-700 rounded p-1 text-xs">
+            <option value="">best</option>
+            {{range .Formats}}<option value="{{.FormatID}}">{{.Resolution}} ({{.Ext}})</option>{{end}}
+          </select>
+          {{end}}
+          <select name="proxy_mode" class="bg-slate-950 border border-slate-700 rounded p-1 text-xs">
+            <option value="global">Use Global Proxy</option>
+            <option value="direct">Direct</option>
+            <option value="custom">Custom Proxy</option>
+          </select>
+          <input name="custom_proxy" placeholder="custom proxy url" class="bg-slate-950 border border-slate-700 rounded p-1 text-xs w-40" />
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-3 py-1 rounded text-xs">Download</button>
+        </form>
+      {{end}}
+    </div>
+  </div>
+{{else}}
+  <p class="text-slate-500 text-sm">No results.</p>
+{{end}}

@@ -1,0 +1,18 @@
+{{range .Proxies}}
+<tr class="border-b border-slate-800/50" id="proxy-{{.ID}}">
+  <td class="py-1">{{.Name}}</td>
+  <td class="text-slate-400">{{.ProxyURL}}</td>
+  <td>
+    <form hx-post="/api/proxies/{{.ID}}" hx-target="#proxy-rows" hx-swap="innerHTML">
+      <input type="hidden" name="name" value="{{.Name}}" />
+      <input type="hidden" name="proxy_url" value="{{.ProxyURL}}" />
+      <input type="checkbox" name="enabled" {{if .Enabled}}checked{{end}} onchange="this.form.requestSubmit()" class="accent-emerald-500" />
+    </form>
+  </td>
+  <td class="text-right">
+    <button hx-delete="/api/proxies/{{.ID}}" hx-target="#proxy-rows" hx-swap="innerHTML" class="text-red-400 hover:underline text-xs">remove</button>
+  </td>
+</tr>
+{{else}}
+<tr><td colspan="4" class="py-3 text-slate-500 text-sm">No proxies in pool yet.</td></tr>
+{{end}}
