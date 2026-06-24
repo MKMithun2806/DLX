@@ -1,4 +1,4 @@
-# API Reference
+# API Docs
 
 Base URL: `http://<host>:8080`
 
