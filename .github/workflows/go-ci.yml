@@ -1,0 +1,63 @@
+name: Go CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:   # 🧠 manual “Run workflow” button in GitHub UI
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ⚡ Go setup with caching enabled
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      # 📦 Download dependencies
+      - name: Download deps
+        run: go mod download
+
+      # 🧼 Format check (fails CI if not formatted)
+      - name: Verify formatting
+        run: |
+          if [ "$(gofmt -l .)" ]; then
+            echo "Go files are not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+
+      # 🔍 Static analysis
+      - name: Run vet
+        run: go vet ./...
+
+      # 🧪 Run tests (even if you don’t have many yet, this future-proofs it)
+      - name: Run tests
+        run: go test ./... -v
+
+      # ⚡ Optional: real-world linting (highly recommended for OSS polish)
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      # 🏗️ Build binary (musl/static-style)
+      - name: Build binary
+        env:
+          CGO_ENABLED: 0
+        run: |
+          go build -trimpath -ldflags="-s -w" -o dlx ./cmd/server
+
+      # 📦 Upload artifact (so you can download binary from Actions UI)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dlx-binary
+          path: dlx
