@@ -9,9 +9,9 @@ import (
 
 // Mode identifies a rotation strategy.
 const (
-	ModeRandom      = "random"
-	ModeRoundRobin  = "round_robin"
-	ModeSticky      = "sticky"
+	ModeRandom     = "random"
+	ModeRoundRobin = "round_robin"
+	ModeSticky     = "sticky"
 )
 
 // Pool manages a set of enabled proxies and hands out the next one to use

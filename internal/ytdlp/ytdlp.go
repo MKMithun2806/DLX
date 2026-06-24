@@ -42,13 +42,13 @@ type rawFormat struct {
 // rawInfo mirrors the subset of yt-dlp's --dump-json top-level video info
 // that we care about.
 type rawInfo struct {
-	Title     string      `json:"title"`
-	Thumbnail string      `json:"thumbnail"`
-	Duration  float64     `json:"duration"`
-	Uploader  string      `json:"uploader"`
-	Formats   []rawFormat `json:"formats"`
-	Filesize  float64     `json:"filesize"`
-	WebpageURL string     `json:"webpage_url"`
+	Title      string      `json:"title"`
+	Thumbnail  string      `json:"thumbnail"`
+	Duration   float64     `json:"duration"`
+	Uploader   string      `json:"uploader"`
+	Formats    []rawFormat `json:"formats"`
+	Filesize   float64     `json:"filesize"`
+	WebpageURL string      `json:"webpage_url"`
 }
 
 // buildArgs appends global/per-request proxy flags to a yt-dlp argument list.

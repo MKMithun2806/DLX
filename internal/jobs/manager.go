@@ -235,9 +235,9 @@ func (m *Manager) setState(downloadID, state string, progress float64, message s
 	m.repo.UpdateLatestJobForDownload(downloadID, state, progress, message)
 	m.Events.Publish(map[string]any{
 		"download_id": downloadID,
-		"state":        state,
-		"progress":     progress,
-		"message":      message,
+		"state":       state,
+		"progress":    progress,
+		"message":     message,
 	})
 	_ = job
 }
@@ -246,9 +246,9 @@ func (m *Manager) fail(downloadID, reason string) {
 	m.repo.UpdateDownloadStatus(downloadID, "failed", reason)
 	m.Events.Publish(map[string]any{
 		"download_id": downloadID,
-		"state":        "failed",
-		"progress":     0,
-		"message":      reason,
+		"state":       "failed",
+		"progress":    0,
+		"message":     reason,
 	})
 }
 

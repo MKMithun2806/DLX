@@ -8,7 +8,7 @@ type Settings struct {
 	ProxyHTTP      string `json:"proxy_http"`
 	ProxyHTTPS     string `json:"proxy_https"`
 	ProxySOCKS5    string `json:"proxy_socks5"`
-	RotationMode   string `json:"rotation_mode"`   // random | round_robin | sticky
+	RotationMode   string `json:"rotation_mode"` // random | round_robin | sticky
 	DirectFallback bool   `json:"direct_fallback"`
 }
 
@@ -103,7 +103,7 @@ type LogEntry struct {
 type DownloadRequest struct {
 	URL         string `json:"url"`
 	FormatID    string `json:"format_id"`
-	ProxyMode   string `json:"proxy_mode"`   // global|direct|custom
+	ProxyMode   string `json:"proxy_mode"` // global|direct|custom
 	CustomProxy string `json:"custom_proxy"`
 }
 

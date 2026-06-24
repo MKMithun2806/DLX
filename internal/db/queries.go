@@ -48,11 +48,11 @@ func (r *Repo) GetSettings() (models.Settings, error) {
 
 func (r *Repo) SaveSettings(s models.Settings) error {
 	kv := map[string]string{
-		"proxy_http":       s.ProxyHTTP,
-		"proxy_https":      s.ProxyHTTPS,
-		"proxy_socks5":     s.ProxySOCKS5,
-		"rotation_mode":    s.RotationMode,
-		"direct_fallback":  boolToStr(s.DirectFallback),
+		"proxy_http":      s.ProxyHTTP,
+		"proxy_https":     s.ProxyHTTPS,
+		"proxy_socks5":    s.ProxySOCKS5,
+		"rotation_mode":   s.RotationMode,
+		"direct_fallback": boolToStr(s.DirectFallback),
 	}
 	tx, err := r.DB.Begin()
 	if err != nil {
