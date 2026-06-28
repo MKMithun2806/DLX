@@ -170,7 +170,7 @@ Returns one of `video`, `thumbnail`, or `metadata`.
 
 - Local storage serves the file directly.
 - S3 storage redirects video/thumbnail requests to a short-lived presigned URL.
-- Metadata is returned as JSON from the stored `metadata.json` payload.
+- Metadata is returned from SQLite when present, otherwise read from the stored `metadata.json` package file on local disk or S3.
 
 ---
 
