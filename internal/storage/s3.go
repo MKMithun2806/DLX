@@ -222,14 +222,6 @@ func (s *S3Backend) packageRoot(id string) string {
 	return path.Join(s.packagePrefix(), id)
 }
 
-func (s *S3Backend) withPrefix(key string) string {
-	objectKey := key
-	if s.cfg.Prefix != "" {
-		objectKey = path.Join(trimSlash(s.cfg.Prefix), key)
-	}
-	return objectKey
-}
-
 func trimSlash(s string) string {
 	for len(s) > 0 && s[len(s)-1] == '/' {
 		s = s[:len(s)-1]

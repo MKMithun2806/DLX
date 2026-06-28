@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"io"
 )
 
 // Backend is the common interface implemented by both local disk and
@@ -56,9 +55,4 @@ type UsageStats struct {
 	TotalBytes uint64
 	UsedBytes  uint64
 	FreeBytes  uint64
-}
-
-// readAll is shared by storage backends.
-func readAll(r io.Reader) ([]byte, error) {
-	return io.ReadAll(r)
 }

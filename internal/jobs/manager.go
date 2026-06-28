@@ -356,21 +356,3 @@ func thumbnailFromVideoPath(videoPath string) string {
 	}
 	return ""
 }
-
-func firstFileIn(dir string) string {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return ""
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			return filepath.Join(dir, e.Name())
-		}
-	}
-	return ""
-}
-
-func sanitizeFilename(name string) string {
-	replacer := strings.NewReplacer("/", "_", "\\", "_", ":", "_", "..", "_")
-	return replacer.Replace(name)
-}
