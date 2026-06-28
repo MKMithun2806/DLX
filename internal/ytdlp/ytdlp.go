@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -49,6 +51,14 @@ type rawInfo struct {
 	Formats    []rawFormat `json:"formats"`
 	Filesize   float64     `json:"filesize"`
 	WebpageURL string      `json:"webpage_url"`
+}
+
+// DownloadResult describes the files yt-dlp produced for a single
+// download job.
+type DownloadResult struct {
+	VideoPath     string
+	ThumbnailPath string
+	MetadataPath  string
 }
 
 // buildArgs appends global/per-request proxy flags to a yt-dlp argument list.
@@ -136,6 +146,28 @@ func (r *Runner) Scan(ctx context.Context, url, proxy string) models.ScanResult 
 	}
 }
 
+// FetchMetadata returns the raw JSON output from yt-dlp for the given URL.
+// The caller is responsible for persisting the bytes exactly as returned.
+func (r *Runner) FetchMetadata(ctx context.Context, url, proxy string) ([]byte, error) {
+	args := []string{"--dump-single-json", "--no-warnings", "--skip-download", "--no-playlist"}
+	args = append(args, proxyArgs(proxy)...)
+	args = append(args, url)
+
+	cmd := exec.CommandContext(ctx, r.BinPath, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		msg := err.Error()
+		if ee, ok := err.(*exec.ExitError); ok {
+			msg = string(ee.Stderr)
+			if msg == "" {
+				msg = err.Error()
+			}
+		}
+		return nil, fmt.Errorf("yt-dlp metadata fetch failed: %s", strings.TrimSpace(msg))
+	}
+	return out, nil
+}
+
 // ProgressFunc receives incremental progress updates (0-100) and a status
 // message while a download runs.
 type ProgressFunc func(percent float64, message string)
@@ -147,26 +179,38 @@ var progressRe = regexp.MustCompile(`\[download\]\s+([0-9.]+)%`)
 // progress lines to onProgress as they arrive. It returns the resolved
 // output file path reported by yt-dlp, if it can be determined.
 func (r *Runner) Download(ctx context.Context, url, formatID, proxy, outputTemplate string, onProgress ProgressFunc) (string, error) {
+	artifacts, err := r.DownloadPackage(ctx, url, formatID, proxy, outputTemplate, onProgress)
+	if err != nil {
+		return "", err
+	}
+	return artifacts.VideoPath, nil
+}
+
+// DownloadPackage downloads the selected media, thumbnail, and metadata
+// JSON files into outputTemplate's directory and returns the resolved
+// video/thumbnail/metadata paths.
+func (r *Runner) DownloadPackage(ctx context.Context, url, formatID, proxy, outputTemplate string, onProgress ProgressFunc) (DownloadResult, error) {
 	args := []string{"--newline", "--no-warnings", "--no-playlist", "-o", outputTemplate}
 	if formatID != "" {
 		args = append(args, "-f", formatID)
 	}
 	args = append(args, proxyArgs(proxy)...)
+	args = append(args, "--write-thumbnail", "--write-info-json")
 	args = append(args, "--print", "after_move:filepath")
 	args = append(args, url)
 
 	cmd := exec.CommandContext(ctx, r.BinPath, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", err
+		return DownloadResult{}, err
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return "", err
+		return DownloadResult{}, err
 	}
 
 	if err := cmd.Start(); err != nil {
-		return "", err
+		return DownloadResult{}, err
 	}
 
 	var resolvedPath string
@@ -207,7 +251,62 @@ func (r *Runner) Download(ctx context.Context, url, formatID, proxy, outputTempl
 	<-done
 	waitErr := cmd.Wait()
 	if waitErr != nil {
-		return "", fmt.Errorf("yt-dlp download failed: %s", strings.TrimSpace(errBuf.String()))
+		return DownloadResult{}, fmt.Errorf("yt-dlp download failed: %s", strings.TrimSpace(errBuf.String()))
 	}
-	return resolvedPath, nil
+	if resolvedPath == "" {
+		resolvedPath = firstMatchingFile(outputTemplate)
+	}
+	if resolvedPath == "" {
+		return DownloadResult{}, fmt.Errorf("yt-dlp completed but no output file was found")
+	}
+
+	stem := strings.TrimSuffix(resolvedPath, filepath.Ext(resolvedPath))
+	metadataPath := stem + ".info.json"
+	if _, err := os.Stat(metadataPath); err != nil {
+		metadataPath = ""
+	}
+
+	thumbnailPath := firstThumbnailForStem(stem)
+	return DownloadResult{
+		VideoPath:     resolvedPath,
+		ThumbnailPath: thumbnailPath,
+		MetadataPath:  metadataPath,
+	}, nil
+}
+
+func firstMatchingFile(outputTemplate string) string {
+	dir := filepath.Dir(outputTemplate)
+	matches, err := filepath.Glob(filepath.Join(dir, "*"))
+	if err != nil || len(matches) == 0 {
+		return ""
+	}
+	for _, wanted := range []string{".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4a", ".mp3"} {
+		for _, match := range matches {
+			if strings.EqualFold(filepath.Ext(match), wanted) {
+				return match
+			}
+		}
+	}
+	for _, match := range matches {
+		base := filepath.Base(match)
+		if strings.HasSuffix(base, ".info.json") {
+			continue
+		}
+		ext := filepath.Ext(match)
+		if ext == "" || strings.EqualFold(ext, ".jpg") || strings.EqualFold(ext, ".jpeg") || strings.EqualFold(ext, ".webp") || strings.EqualFold(ext, ".png") {
+			continue
+		}
+		return match
+	}
+	return ""
+}
+
+func firstThumbnailForStem(stem string) string {
+	for _, ext := range []string{".jpg", ".jpeg", ".webp", ".png"} {
+		candidate := stem + ext
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return ""
 }

@@ -23,13 +23,13 @@ func (a *App) ListDownloads(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteDownload handles DELETE /api/downloads/{id}. For local storage the
-// underlying file is also removed; for S3 only the database record is
-// removed (object lifecycle on the bucket is left to the user/provider).
+// underlying package folder is also removed; for S3 only the database
+// record is removed (object lifecycle on the bucket is left to the user/provider).
 func (a *App) DeleteDownload(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	d, err := a.Repo.GetDownload(id)
 	if err == nil && d.StorageType == "local" && d.LocalPath != "" {
-		_ = os.Remove(d.LocalPath)
+		_ = os.RemoveAll(filepath.Dir(d.LocalPath))
 	}
 	if err := a.Repo.DeleteDownload(id); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

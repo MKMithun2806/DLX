@@ -6,16 +6,16 @@ A self-hosted web UI for scanning and downloading videos with [yt-dlp](https://g
 
 - Paste single URLs, multiple URLs, or playlist URLs and scan them with `yt-dlp --dump-json` to preview title, thumbnail, duration, uploader, resolutions, and estimated file size.
 - Queue downloads as background jobs with live progress via Server-Sent Events (no polling).
-- Store completed downloads locally or upload them straight to S3-compatible storage.
+- Store completed downloads as self-contained packages with `video`, `thumbnail`, and `metadata.json` under one folder locally or in S3-compatible storage.
 - Global proxy configuration (HTTP / HTTPS / SOCKS5) applied to all downloads by default, plus a per-download proxy override (use global, direct, or a one-off custom proxy).
 - A full proxy pool with random / round-robin / sticky-session rotation and automatic fallback to a direct connection if every proxy attempt fails.
-- Download history with status, file size, retry, and delete.
+- Download history with status, file size, retry, delete, and package key visibility for downstream viewers.
 - Searchable logs across download, yt-dlp, upload, and proxy events.
 - CSRF protection, per-IP rate limiting, and AES-256-GCM encryption of S3/proxy secrets at rest in SQLite.
 
 ## Tech stack
 
-- **Backend:** Go 1.24, [chi](https://github.com/go-chi/chi) router, SQLite (pure-Go `modernc.org/sqlite` driver, no CGO), AWS SDK v2 for S3.
+- **Backend:** Go 1.22+, [chi](https://github.com/go-chi/chi) router, SQLite (pure-Go `modernc.org/sqlite` driver, no CGO), AWS SDK v2 for S3.
 - **Frontend:** plain HTML + [HTMX](https://htmx.org) + [Alpine.js](https://alpinejs.dev) + Tailwind CSS (all loaded from CDN, no Node build step).
 - **Video engine:** [yt-dlp](https://github.com/yt-dlp/yt-dlp) + ffmpeg, installed in the runtime container image.
 
@@ -50,7 +50,7 @@ docker run -d \
 
 ## Running locally without Docker
 
-Requires Go 1.24+, `yt-dlp` and `ffmpeg` on your `PATH`.
+Requires Go 1.22+, `yt-dlp` and `ffmpeg` on your `PATH`.
 
 ```bash
 go mod download
@@ -75,8 +75,8 @@ The server defaults to `:8080`, a SQLite DB at `/config/app.db`, and downloads i
 
 1. **Dashboard tab** - paste one or more URLs (one per line) and click **Scan**. Each result is shown as a card with title, thumbnail, uploader, duration, and a format dropdown. Pick a per-download proxy mode (global / direct / custom) and click **Download**.
 2. **Proxy Settings tab** - set the global HTTP/HTTPS/SOCKS5 proxy applied by default, choose a rotation mode for the proxy pool, enable direct-connection fallback, and manage the pool of named proxies (add / enable / disable / remove).
-3. **Storage tab** - drag the slider between **Local Only** and **S3 Only**, then fill in the local download path or your S3-compatible credentials (endpoint, region, bucket, access/secret key, prefix, path-style toggle). The secret key field is write-only - leave it blank on subsequent saves to keep the existing encrypted value.
-4. **History tab** - see every download with its status, storage backend, and size; download local files directly, retry failed jobs, or delete records (local files are removed from disk too).
+3. **Storage tab** - drag the slider between **Local Only** and **S3 Only**, then fill in the local download path or your S3-compatible credentials (endpoint, region, bucket, access/secret key, prefix, path-style toggle). The secret key field is write-only - leave it blank on subsequent saves to keep the existing encrypted value. Use the recovery action there to rebuild SQLite from storage if the database is lost.
+4. **History tab** - see every download with its status, storage backend, size, and package keys; download local files directly, retry failed jobs, or delete records (local package folders are removed from disk too).
 5. **Logs tab** - filter by category (download / yt-dlp / upload / proxy) and free-text search across everything that's been logged.
 
 ## Project layout

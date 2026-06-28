@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -68,16 +69,19 @@ func (s *S3Backend) Name() string { return "s3" }
 // Store uploads localSourcePath to the configured bucket under
 // <prefix>/<key>, removing the local temp file once the upload succeeds.
 func (s *S3Backend) Store(ctx context.Context, localSourcePath, key string) (string, error) {
+	objectKey := key
+	if s.cfg.Prefix != "" {
+		objectKey = fmt.Sprintf("%s/%s", trimSlash(s.cfg.Prefix), key)
+	}
+	return s.uploadObject(ctx, localSourcePath, objectKey)
+}
+
+func (s *S3Backend) uploadObject(ctx context.Context, localSourcePath, objectKey string) (string, error) {
 	f, err := os.Open(localSourcePath)
 	if err != nil {
 		return "", fmt.Errorf("s3 store: open: %w", err)
 	}
 	defer f.Close()
-
-	objectKey := key
-	if s.cfg.Prefix != "" {
-		objectKey = fmt.Sprintf("%s/%s", trimSlash(s.cfg.Prefix), key)
-	}
 
 	_, err = s.uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.cfg.Bucket),
@@ -99,10 +103,10 @@ func (s *S3Backend) StorePackage(ctx context.Context, pkg Package) (PackageResul
 	res := PackageResult{PackageRoot: root}
 	for _, file := range pkg.Files {
 		if file.SourcePath == "" {
-			return PackageResult{}, fmt.Errorf("s3 package store: missing source for %s", file.Name)
+			continue
 		}
 		key := path.Join(root, file.Name)
-		stored, err := s.Store(ctx, file.SourcePath, key)
+		stored, err := s.uploadObject(ctx, file.SourcePath, key)
 		if err != nil {
 			return PackageResult{}, err
 		}
@@ -123,10 +127,9 @@ func (s *S3Backend) StorePackage(ctx context.Context, pkg Package) (PackageResul
 // ReadFile downloads a backend object into memory. It is used during
 // recovery to reconstruct the SQLite database from storage.
 func (s *S3Backend) ReadFile(ctx context.Context, key string) ([]byte, error) {
-	objectKey := s.withPrefix(key)
 	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.cfg.Bucket),
-		Key:    aws.String(objectKey),
+		Key:    aws.String(key),
 	})
 	if err != nil {
 		return nil, err
@@ -172,6 +175,40 @@ func (s *S3Backend) ListPackageRoots(ctx context.Context) ([]string, error) {
 		}
 	}
 	return roots, nil
+}
+
+// ListPackageFiles returns the filenames directly beneath a package root.
+func (s *S3Backend) ListPackageFiles(ctx context.Context, root string) ([]string, error) {
+	prefix := strings.TrimSuffix(root, "/") + "/"
+	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.cfg.Bucket),
+		Prefix: aws.String(prefix),
+	})
+	files := make([]string, 0)
+	seen := map[string]struct{}{}
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, obj := range page.Contents {
+			key := aws.ToString(obj.Key)
+			if !strings.HasPrefix(key, prefix) {
+				continue
+			}
+			rest := strings.TrimPrefix(key, prefix)
+			if rest == "" || strings.Contains(rest, "/") {
+				continue
+			}
+			if _, ok := seen[rest]; ok {
+				continue
+			}
+			seen[rest] = struct{}{}
+			files = append(files, rest)
+		}
+	}
+	sort.Strings(files)
+	return files, nil
 }
 
 func (s *S3Backend) packagePrefix() string {

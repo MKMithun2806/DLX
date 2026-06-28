@@ -66,7 +66,7 @@ func (l *LocalBackend) StorePackage(ctx context.Context, pkg Package) (PackageRe
 	res := PackageResult{PackageRoot: filepath.ToSlash(pkg.ID)}
 	for _, file := range pkg.Files {
 		if file.SourcePath == "" {
-			return PackageResult{}, fmt.Errorf("local package store: missing source for %s", file.Name)
+			continue
 		}
 		dest := filepath.Join(packageRoot, file.Name)
 		if err := moveFile(file.SourcePath, dest); err != nil {
@@ -137,6 +137,23 @@ func (l *LocalBackend) ListPackageRoots(ctx context.Context) ([]string, error) {
 	}
 	sort.Strings(roots)
 	return roots, nil
+}
+
+// ListPackageFiles returns the files directly inside a package directory.
+func (l *LocalBackend) ListPackageFiles(ctx context.Context, root string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(l.Root, filepath.FromSlash(root)))
+	if err != nil {
+		return nil, err
+	}
+	files := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		files = append(files, entry.Name())
+	}
+	sort.Strings(files)
+	return files, nil
 }
 
 // Usage reports disk usage statistics for the backend's root path.

@@ -22,6 +22,8 @@ type Backend interface {
 	// backend. Each entry is a storage-relative package root such as
 	// "videos/<id>" or "<id>".
 	ListPackageRoots(ctx context.Context) ([]string, error)
+	// ListPackageFiles returns the direct child files within a package root.
+	ListPackageFiles(ctx context.Context, root string) ([]string, error)
 	// Name identifies the backend, e.g. "local" or "s3".
 	Name() string
 }
@@ -30,7 +32,7 @@ type Backend interface {
 // object storage.
 type PackageFile struct {
 	Name       string
-	SourcePath  string
+	SourcePath string
 }
 
 // Package represents a self-contained video package to be stored.
@@ -42,10 +44,10 @@ type Package struct {
 // PackageResult reports the backend-specific object keys/paths that were
 // assigned to a stored package.
 type PackageResult struct {
-	PackageRoot   string
-	VideoKey      string
-	ThumbnailKey  string
-	MetadataKey   string
+	PackageRoot  string
+	VideoKey     string
+	ThumbnailKey string
+	MetadataKey  string
 }
 
 // UsageStats reports free/used space, used by the local backend for the

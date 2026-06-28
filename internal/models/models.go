@@ -115,3 +115,19 @@ type DownloadRequest struct {
 type ScanRequest struct {
 	URLs string `json:"urls"` // newline separated
 }
+
+// RecoveryReport summarizes a rebuild-from-storage operation.
+type RecoveryReport struct {
+	Recovered int                  `json:"recovered"`
+	Warnings  []string             `json:"warnings,omitempty"`
+	Items     []RecoveryReportItem `json:"items,omitempty"`
+}
+
+// RecoveryReportItem captures the outcome of one package scanned during
+// recovery.
+type RecoveryReportItem struct {
+	DownloadID string   `json:"download_id"`
+	RootKey    string   `json:"root_key"`
+	Missing    []string `json:"missing,omitempty"`
+	Warning    string   `json:"warning,omitempty"`
+}

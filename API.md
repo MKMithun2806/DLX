@@ -71,6 +71,8 @@ Enqueue a background download job.
 { "id": "f47ac10b-...", "status": "queued" }
 ```
 
+Completed downloads are stored as packages with `video_s3_key`, `thumbnail_s3_key`, `metadata_s3_key`, and `metadata_json` in SQLite. Those fields are populated once the background job finishes.
+
 ### `POST /api/downloads/{id}/retry`
 
 Re-queues a failed (or completed) download for another attempt.
@@ -85,6 +87,24 @@ Streams a locally stored file back to the caller as an attachment. Returns
 ### `DELETE /api/downloads/{id}`
 
 Deletes the download record (and the underlying file, if stored locally).
+
+### `POST /api/recovery`
+
+Scans the active storage backend for package folders, reads `metadata.json`, and rebuilds SQLite rows.
+
+**Response `200`:**
+```json
+{
+  "recovered": 12,
+  "warnings": [],
+  "items": [
+    {
+      "download_id": "07db9381",
+      "root_key": "videos/07db9381"
+    }
+  ]
+}
+```
 
 ---
 
@@ -106,7 +126,11 @@ status. (`/api/jobs` is provided as a semantic alias used by the dashboard's
     "title": "Example Video",
     "status": "complete",
     "storage_type": "local",
-    "local_path": "/downloads/f47ac10b_example.mp4",
+    "local_path": "/downloads/f47ac10b/video.mp4",
+    "video_s3_key": "f47ac10b/video.mp4",
+    "thumbnail_s3_key": "f47ac10b/thumbnail.jpg",
+    "metadata_s3_key": "f47ac10b/metadata.json",
+    "metadata_json": "{\"title\":\"Example Video\"}",
     "filesize": 104857600,
     "created_at": "2026-06-24T10:15:00Z",
     "updated_at": "2026-06-24T10:17:42Z"

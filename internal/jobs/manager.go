@@ -137,7 +137,7 @@ func (m *Manager) process(downloadID string) {
 	outputTemplate := filepath.Join(workDir, "%(title)s.%(ext)s")
 
 	lastUpdate := time.Now()
-	outPath, err := m.runner.Download(ctx, d.SourceURL, d.FormatID, effectiveProxy, outputTemplate, func(pct float64, line string) {
+	artifacts, err := m.runner.DownloadPackage(ctx, d.SourceURL, d.FormatID, effectiveProxy, outputTemplate, func(pct float64, line string) {
 		m.repo.AddLog("ytdlp", downloadID, line)
 		if pct >= 0 && time.Since(lastUpdate) > 300*time.Millisecond {
 			m.setState(downloadID, "downloading", pct, line)
@@ -147,7 +147,7 @@ func (m *Manager) process(downloadID string) {
 
 	if err != nil && settings.DirectFallback && effectiveProxy != "" {
 		m.repo.AddLog("proxy", downloadID, fmt.Sprintf("proxy attempt failed (%v); falling back to direct connection", err))
-		outPath, err = m.runner.Download(ctx, d.SourceURL, d.FormatID, "", outputTemplate, func(pct float64, line string) {
+		artifacts, err = m.runner.DownloadPackage(ctx, d.SourceURL, d.FormatID, "", outputTemplate, func(pct float64, line string) {
 			m.repo.AddLog("ytdlp", downloadID, line)
 			if pct >= 0 && time.Since(lastUpdate) > 300*time.Millisecond {
 				m.setState(downloadID, "downloading", pct, line)
@@ -162,12 +162,38 @@ func (m *Manager) process(downloadID string) {
 		return
 	}
 
-	if outPath == "" {
-		// best effort: pick the only file in workDir if yt-dlp didn't print one
-		outPath = firstFileIn(workDir)
+	if artifacts.VideoPath == "" {
+		// best effort: pick the only media file in workDir if yt-dlp didn't print one
+		artifacts.VideoPath = firstVideoFileIn(workDir)
 	}
-	if outPath == "" {
+	if artifacts.VideoPath == "" {
 		m.fail(downloadID, "yt-dlp completed but no output file was found")
+		return
+	}
+	if artifacts.MetadataPath == "" {
+		raw, ferr := m.runner.FetchMetadata(ctx, d.SourceURL, effectiveProxy)
+		if ferr != nil {
+			m.fail(downloadID, fmt.Sprintf("yt-dlp completed but metadata.json could not be generated: %v", ferr))
+			return
+		}
+		artifacts.MetadataPath = filepath.Join(workDir, "metadata.json")
+		if err := os.WriteFile(artifacts.MetadataPath, raw, 0o644); err != nil {
+			m.fail(downloadID, fmt.Sprintf("could not persist metadata.json: %v", err))
+			return
+		}
+	}
+	if artifacts.ThumbnailPath == "" {
+		if alt := thumbnailFromVideoPath(artifacts.VideoPath); alt != "" {
+			artifacts.ThumbnailPath = alt
+		}
+	}
+	if artifacts.ThumbnailPath == "" {
+		m.fail(downloadID, "yt-dlp completed but no thumbnail was found")
+		return
+	}
+	metadataJSON, err := os.ReadFile(artifacts.MetadataPath)
+	if err != nil {
+		m.fail(downloadID, fmt.Sprintf("could not read metadata.json: %v", err))
 		return
 	}
 
@@ -178,51 +204,48 @@ func (m *Manager) process(downloadID string) {
 		return
 	}
 
-	key := sanitizeFilename(fmt.Sprintf("%s_%s", downloadID[:8], filepath.Base(outPath)))
-	var backend storage.Backend
-	var storageType string
-
-	switch storeCfg.Mode {
-	case "s3":
-		secret, _ := m.box.Decrypt(storeCfg.S3SecretKey)
-		s3b, err := storage.NewS3(ctx, storage.S3Config{
-			Endpoint:     storeCfg.S3Endpoint,
-			Region:       storeCfg.S3Region,
-			Bucket:       storeCfg.S3Bucket,
-			AccessKey:    storeCfg.S3AccessKey,
-			SecretKey:    secret,
-			Prefix:       storeCfg.S3Prefix,
-			UsePathStyle: storeCfg.S3UsePathStyle,
-		})
-		if err != nil {
-			m.fail(downloadID, fmt.Sprintf("s3 backend init failed: %v", err))
-			return
-		}
-		backend = s3b
-		storageType = "s3"
-	default:
-		backend = storage.NewLocal(storeCfg.LocalPath)
-		storageType = "local"
+	backend, storageType, err := m.backendForConfig(ctx, storeCfg)
+	if err != nil {
+		m.fail(downloadID, err.Error())
+		return
 	}
 
-	info, _ := os.Stat(outPath)
+	videoExt := filepath.Ext(artifacts.VideoPath)
+	thumbExt := filepath.Ext(artifacts.ThumbnailPath)
+	packageFiles := storage.Package{
+		ID: downloadID,
+		Files: []storage.PackageFile{
+			{Name: "video" + videoExt, SourcePath: artifacts.VideoPath},
+			{Name: "thumbnail" + thumbExt, SourcePath: artifacts.ThumbnailPath},
+			{Name: "metadata.json", SourcePath: artifacts.MetadataPath},
+		},
+	}
+
+	info, _ := os.Stat(artifacts.VideoPath)
 	var size int64
 	if info != nil {
 		size = info.Size()
 	}
 
-	ref, err := backend.Store(ctx, outPath, key)
+	ref, err := backend.StorePackage(ctx, packageFiles)
 	if err != nil {
 		m.fail(downloadID, fmt.Sprintf("storage upload failed: %v", err))
 		m.repo.AddLog("upload", downloadID, fmt.Sprintf("upload failed: %v", err))
 		return
 	}
-	m.repo.AddLog("upload", downloadID, fmt.Sprintf("stored as %s (%s)", ref, storageType))
+	m.repo.AddLog("upload", downloadID, fmt.Sprintf("stored package root=%s video=%s thumbnail=%s metadata=%s (%s)",
+		ref.PackageRoot, ref.VideoKey, ref.ThumbnailKey, ref.MetadataKey, storageType))
 
-	if storageType == "s3" {
-		m.repo.UpdateDownloadStorageResult(downloadID, "s3", "", ref, size)
-	} else {
-		m.repo.UpdateDownloadStorageResult(downloadID, "local", ref, "", size)
+	videoKey := ref.VideoKey
+	thumbKey := ref.ThumbnailKey
+	metadataKey := ref.MetadataKey
+	localPath := ""
+	if storageType == "local" && videoKey != "" {
+		localPath = filepath.Join(storeCfg.LocalPath, filepath.FromSlash(videoKey))
+	}
+	if err := m.repo.UpdateDownloadPackageResult(downloadID, storageType, localPath, videoKey, thumbKey, metadataKey, size, string(metadataJSON)); err != nil {
+		m.fail(downloadID, fmt.Sprintf("could not persist download result: %v", err))
+		return
 	}
 
 	m.setState(downloadID, "complete", 100, "done")
@@ -257,6 +280,81 @@ func redactProxy(p string) string {
 		return "direct"
 	}
 	return p
+}
+
+func (m *Manager) backendForConfig(ctx context.Context, storeCfg models.StorageConfig) (storage.Backend, string, error) {
+	switch storeCfg.Mode {
+	case "s3":
+		secret, _ := m.box.Decrypt(storeCfg.S3SecretKey)
+		s3b, err := storage.NewS3(ctx, storage.S3Config{
+			Endpoint:     storeCfg.S3Endpoint,
+			Region:       storeCfg.S3Region,
+			Bucket:       storeCfg.S3Bucket,
+			AccessKey:    storeCfg.S3AccessKey,
+			SecretKey:    secret,
+			Prefix:       storeCfg.S3Prefix,
+			UsePathStyle: storeCfg.S3UsePathStyle,
+		})
+		if err != nil {
+			return nil, "", fmt.Errorf("s3 backend init failed: %w", err)
+		}
+		return s3b, "s3", nil
+	default:
+		return storage.NewLocal(storeCfg.LocalPath), "local", nil
+	}
+}
+
+func firstVideoFileIn(dir string) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	wanted := map[string]struct{}{
+		".mp4": {}, ".mkv": {}, ".webm": {}, ".mov": {}, ".avi": {}, ".m4a": {}, ".mp3": {},
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".info.json") || strings.EqualFold(name, "metadata.json") {
+			continue
+		}
+		if _, ok := wanted[strings.ToLower(filepath.Ext(name))]; ok {
+			return filepath.Join(dir, name)
+		}
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(name, ".info.json") {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(name), ".jpg") || strings.EqualFold(filepath.Ext(name), ".jpeg") ||
+			strings.EqualFold(filepath.Ext(name), ".webp") || strings.EqualFold(filepath.Ext(name), ".png") {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(name), ".json") {
+			continue
+		}
+		if filepath.Ext(name) != "" {
+			return filepath.Join(dir, name)
+		}
+	}
+	return ""
+}
+
+func thumbnailFromVideoPath(videoPath string) string {
+	stem := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+	for _, ext := range []string{".jpg", ".jpeg", ".webp", ".png"} {
+		candidate := stem + ext
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return ""
 }
 
 func firstFileIn(dir string) string {

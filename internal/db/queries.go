@@ -152,10 +152,12 @@ func (r *Repo) SaveStorageConfig(sc models.StorageConfig) error {
 
 func (r *Repo) CreateDownload(d models.Download) error {
 	_, err := r.DB.Exec(`INSERT INTO downloads (id, source_url, title, thumbnail, uploader, duration,
-		format_id, resolution, filesize, storage_type, status, proxy_mode, custom_proxy)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		format_id, resolution, filesize, storage_type, local_path, s3_key, video_s3_key,
+		thumbnail_s3_key, metadata_s3_key, metadata_json, status, proxy_mode, custom_proxy)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		d.ID, d.SourceURL, d.Title, d.Thumbnail, d.Uploader, d.Duration,
-		d.FormatID, d.Resolution, d.Filesize, d.StorageType, d.Status, d.ProxyMode, d.CustomProxy)
+		d.FormatID, d.Resolution, d.Filesize, d.StorageType, d.LocalPath, d.S3Key, d.VideoS3Key,
+		d.ThumbnailS3Key, d.MetadataS3Key, d.MetadataJSON, d.Status, d.ProxyMode, d.CustomProxy)
 	return err
 }
 
@@ -166,8 +168,13 @@ func (r *Repo) UpdateDownloadStatus(id, status, errMsg string) error {
 }
 
 func (r *Repo) UpdateDownloadStorageResult(id, storageType, localPath, s3Key string, filesize int64) error {
-	_, err := r.DB.Exec(`UPDATE downloads SET storage_type = ?, local_path = ?, s3_key = ?, filesize = ?,
-		updated_at = datetime('now') WHERE id = ?`, storageType, localPath, s3Key, filesize, id)
+	return r.UpdateDownloadPackageResult(id, storageType, localPath, s3Key, "", "", filesize, "")
+}
+
+func (r *Repo) UpdateDownloadPackageResult(id, storageType, localPath, videoKey, thumbnailKey, metadataKey string, filesize int64, metadataJSON string) error {
+	_, err := r.DB.Exec(`UPDATE downloads SET storage_type = ?, local_path = ?, s3_key = ?, video_s3_key = ?,
+		thumbnail_s3_key = ?, metadata_s3_key = ?, metadata_json = ?, filesize = ?, updated_at = datetime('now')
+		WHERE id = ?`, storageType, localPath, videoKey, videoKey, thumbnailKey, metadataKey, metadataJSON, filesize, id)
 	return err
 }
 
@@ -175,10 +182,12 @@ func (r *Repo) GetDownload(id string) (models.Download, error) {
 	var d models.Download
 	var created, updated string
 	err := r.DB.QueryRow(`SELECT id, source_url, title, thumbnail, uploader, duration, format_id,
-		resolution, filesize, storage_type, local_path, s3_key, status, error, proxy_mode, custom_proxy,
-		created_at, updated_at FROM downloads WHERE id = ?`, id).Scan(
+		resolution, filesize, storage_type, local_path, s3_key, video_s3_key, thumbnail_s3_key,
+		metadata_s3_key, metadata_json, status, error, proxy_mode, custom_proxy, created_at, updated_at
+		FROM downloads WHERE id = ?`, id).Scan(
 		&d.ID, &d.SourceURL, &d.Title, &d.Thumbnail, &d.Uploader, &d.Duration, &d.FormatID,
-		&d.Resolution, &d.Filesize, &d.StorageType, &d.LocalPath, &d.S3Key, &d.Status, &d.Error,
+		&d.Resolution, &d.Filesize, &d.StorageType, &d.LocalPath, &d.S3Key, &d.VideoS3Key,
+		&d.ThumbnailS3Key, &d.MetadataS3Key, &d.MetadataJSON, &d.Status, &d.Error,
 		&d.ProxyMode, &d.CustomProxy, &created, &updated)
 	if err != nil {
 		return d, err
@@ -193,8 +202,9 @@ func (r *Repo) ListDownloads(limit int) ([]models.Download, error) {
 		limit = 200
 	}
 	rows, err := r.DB.Query(`SELECT id, source_url, title, thumbnail, uploader, duration, format_id,
-		resolution, filesize, storage_type, local_path, s3_key, status, error, proxy_mode, custom_proxy,
-		created_at, updated_at FROM downloads ORDER BY created_at DESC LIMIT ?`, limit)
+		resolution, filesize, storage_type, local_path, s3_key, video_s3_key, thumbnail_s3_key,
+		metadata_s3_key, metadata_json, status, error, proxy_mode, custom_proxy, created_at, updated_at
+		FROM downloads ORDER BY created_at DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +215,8 @@ func (r *Repo) ListDownloads(limit int) ([]models.Download, error) {
 		var d models.Download
 		var created, updated string
 		if err := rows.Scan(&d.ID, &d.SourceURL, &d.Title, &d.Thumbnail, &d.Uploader, &d.Duration, &d.FormatID,
-			&d.Resolution, &d.Filesize, &d.StorageType, &d.LocalPath, &d.S3Key, &d.Status, &d.Error,
+			&d.Resolution, &d.Filesize, &d.StorageType, &d.LocalPath, &d.S3Key, &d.VideoS3Key,
+			&d.ThumbnailS3Key, &d.MetadataS3Key, &d.MetadataJSON, &d.Status, &d.Error,
 			&d.ProxyMode, &d.CustomProxy, &created, &updated); err != nil {
 			return nil, err
 		}
@@ -214,6 +225,50 @@ func (r *Repo) ListDownloads(limit int) ([]models.Download, error) {
 		out = append(out, d)
 	}
 	return out, nil
+}
+
+// UpsertDownload writes the provided download row, inserting or updating
+// on the primary key. This is used by recovery to rebuild SQLite from
+// storage without losing metadata.
+func (r *Repo) UpsertDownload(d models.Download) error {
+	createdAt := d.CreatedAt.UTC().Format("2006-01-02 15:04:05")
+	if d.CreatedAt.IsZero() {
+		createdAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+	}
+	updatedAt := d.UpdatedAt.UTC().Format("2006-01-02 15:04:05")
+	if d.UpdatedAt.IsZero() {
+		updatedAt = createdAt
+	}
+	_, err := r.DB.Exec(`INSERT INTO downloads (
+		id, source_url, title, thumbnail, uploader, duration, format_id, resolution, filesize,
+		storage_type, local_path, s3_key, video_s3_key, thumbnail_s3_key, metadata_s3_key,
+		metadata_json, status, error, proxy_mode, custom_proxy, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	ON CONFLICT(id) DO UPDATE SET
+		source_url = excluded.source_url,
+		title = excluded.title,
+		thumbnail = excluded.thumbnail,
+		uploader = excluded.uploader,
+		duration = excluded.duration,
+		format_id = excluded.format_id,
+		resolution = excluded.resolution,
+		filesize = excluded.filesize,
+		storage_type = excluded.storage_type,
+		local_path = excluded.local_path,
+		s3_key = excluded.s3_key,
+		video_s3_key = excluded.video_s3_key,
+		thumbnail_s3_key = excluded.thumbnail_s3_key,
+		metadata_s3_key = excluded.metadata_s3_key,
+		metadata_json = excluded.metadata_json,
+		status = excluded.status,
+		error = excluded.error,
+		proxy_mode = excluded.proxy_mode,
+		custom_proxy = excluded.custom_proxy,
+		updated_at = excluded.updated_at`,
+		d.ID, d.SourceURL, d.Title, d.Thumbnail, d.Uploader, d.Duration, d.FormatID, d.Resolution, d.Filesize,
+		d.StorageType, d.LocalPath, d.S3Key, d.VideoS3Key, d.ThumbnailS3Key, d.MetadataS3Key,
+		d.MetadataJSON, d.Status, d.Error, d.ProxyMode, d.CustomProxy, createdAt, updatedAt)
+	return err
 }
 
 func (r *Repo) DeleteDownload(id string) error {

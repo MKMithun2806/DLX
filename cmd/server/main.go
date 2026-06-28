@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -47,6 +48,12 @@ func main() {
 	runner := ytdlp.New(cfg.YtDlpPath)
 	tmpRoot := "/tmp/videodl-jobs"
 	mgr := jobs.NewManager(repo, runner, pool, box, tmpRoot, 2)
+
+	if report, err := mgr.MigrateLegacyDownloads(context.Background()); err != nil {
+		log.Printf("legacy package migration failed: %v", err)
+	} else if report.Recovered > 0 || len(report.Warnings) > 0 {
+		log.Printf("legacy package migration completed: migrated=%d warnings=%d", report.Recovered, len(report.Warnings))
+	}
 
 	templatesDir := envOr("TEMPLATES_DIR", "web/templates")
 	app, err := handlers.NewApp(repo, mgr, runner, pool, box, cfg, templatesDir)
@@ -96,6 +103,7 @@ func main() {
 		r.Post("/downloads/{id}/delete", app.DeleteDownload) // form-friendly alias
 		r.Get("/downloads/{id}/file", app.DownloadFile)
 		r.Post("/downloads/{id}/retry", app.RetryDownload)
+		r.Post("/recovery", app.RecoverStorage)
 
 		r.Get("/logs", app.Logs)
 	})
