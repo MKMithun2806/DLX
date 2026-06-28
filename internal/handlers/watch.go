@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -86,6 +87,9 @@ func (a *App) WatchAsset(w http.ResponseWriter, r *http.Request) {
 		if storeCfg.Mode == "s3" {
 			key := firstNonEmpty(download.VideoS3Key, download.S3Key)
 			if key == "" {
+				key = packageAssetKey(r.Context(), backend, storeCfg, download, "video")
+			}
+			if key == "" {
 				writeError(w, http.StatusNotFound, "video not available")
 				return
 			}
@@ -113,8 +117,19 @@ func (a *App) WatchAsset(w http.ResponseWriter, r *http.Request) {
 
 		path, err := localAssetPath(download, storeCfg, kind)
 		if err != nil {
-			writeError(w, http.StatusNotFound, err.Error())
-			return
+			key := firstNonEmpty(download.VideoS3Key, download.S3Key)
+			if key == "" {
+				key = packageAssetKey(r.Context(), backend, storeCfg, download, "video")
+			}
+			if key == "" {
+				writeError(w, http.StatusNotFound, err.Error())
+				return
+			}
+			path = localStoredPath(storeCfg.LocalPath, key)
+			if _, statErr := os.Stat(path); statErr != nil {
+				writeError(w, http.StatusNotFound, "video not available")
+				return
+			}
 		}
 		http.ServeFile(w, r, path)
 		return
@@ -122,6 +137,9 @@ func (a *App) WatchAsset(w http.ResponseWriter, r *http.Request) {
 	case "thumbnail":
 		if storeCfg.Mode == "s3" {
 			key := firstNonEmpty(download.ThumbnailS3Key, download.S3Key)
+			if key == "" {
+				key = packageAssetKey(r.Context(), backend, storeCfg, download, "thumbnail")
+			}
 			if key == "" {
 				writeError(w, http.StatusNotFound, "thumbnail not available")
 				return
@@ -150,13 +168,29 @@ func (a *App) WatchAsset(w http.ResponseWriter, r *http.Request) {
 
 		path, err := localAssetPath(download, storeCfg, kind)
 		if err != nil {
-			thumbURL := download.Thumbnail
-			if thumbURL == "" {
-				writeError(w, http.StatusNotFound, err.Error())
+			key := firstNonEmpty(download.ThumbnailS3Key, download.S3Key)
+			if key == "" {
+				key = packageAssetKey(r.Context(), backend, storeCfg, download, "thumbnail")
+			}
+			if key == "" {
+				thumbURL := download.Thumbnail
+				if thumbURL == "" {
+					writeError(w, http.StatusNotFound, err.Error())
+					return
+				}
+				http.Redirect(w, r, thumbURL, http.StatusTemporaryRedirect)
 				return
 			}
-			http.Redirect(w, r, thumbURL, http.StatusTemporaryRedirect)
-			return
+			path = localStoredPath(storeCfg.LocalPath, key)
+			if _, statErr := os.Stat(path); statErr != nil {
+				thumbURL := download.Thumbnail
+				if thumbURL == "" {
+					writeError(w, http.StatusNotFound, "thumbnail not available")
+					return
+				}
+				http.Redirect(w, r, thumbURL, http.StatusTemporaryRedirect)
+				return
+			}
 		}
 		http.ServeFile(w, r, path)
 		return
@@ -221,14 +255,30 @@ func (a *App) resolveMetadata(ctx context.Context, d models.Download) ([]byte, e
 	if strings.TrimSpace(d.MetadataJSON) != "" {
 		return []byte(d.MetadataJSON), nil
 	}
-	if strings.TrimSpace(d.MetadataS3Key) == "" {
-		return nil, nil
-	}
-	backend, _, err := a.storageBackend(ctx)
+
+	backend, storeCfg, err := a.storageBackend(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return backend.ReadFile(ctx, d.MetadataS3Key)
+
+	for _, candidate := range metadataCandidates(d) {
+		if candidate == "" {
+			continue
+		}
+		raw, err := backend.ReadFile(ctx, candidate)
+		if err == nil && len(raw) > 0 {
+			return raw, nil
+		}
+	}
+
+	if key := packageAssetKey(ctx, backend, storeCfg, d, "metadata"); key != "" {
+		raw, err := backend.ReadFile(ctx, key)
+		if err == nil && len(raw) > 0 {
+			return raw, nil
+		}
+	}
+
+	return nil, nil
 }
 
 func (a *App) storageBackend(ctx context.Context) (storage.Backend, models.StorageConfig, error) {
@@ -318,4 +368,115 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func metadataCandidates(d models.Download) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, 4)
+	add := func(key string) {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return
+		}
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		out = append(out, key)
+	}
+
+	add(d.MetadataS3Key)
+	add(deriveMetadataKey(d.VideoS3Key))
+	add(deriveMetadataKey(d.S3Key))
+	add(guessStoredKey(d.LocalPath, "metadata.json"))
+
+	return out
+}
+
+func packageAssetKey(ctx context.Context, backend storage.Backend, storeCfg models.StorageConfig, d models.Download, kind string) string {
+	for _, root := range packageRootCandidates(storeCfg, d) {
+		files, err := backend.ListPackageFiles(ctx, root)
+		if err != nil {
+			continue
+		}
+		name := packageFilenameForKind(files, kind)
+		if name == "" {
+			continue
+		}
+		return path.Join(root, name)
+	}
+	return ""
+}
+
+func packageRootCandidates(storeCfg models.StorageConfig, d models.Download) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, 2)
+	add := func(root string) {
+		root = strings.Trim(root, "/")
+		if root == "" {
+			return
+		}
+		if _, ok := seen[root]; ok {
+			return
+		}
+		seen[root] = struct{}{}
+		out = append(out, root)
+	}
+
+	if storeCfg.Mode == "s3" {
+		prefix := strings.Trim(storeCfg.S3Prefix, "/")
+		if prefix == "" {
+			add(path.Join("videos", d.ID))
+		} else {
+			add(path.Join(prefix, d.ID))
+		}
+	} else {
+		add(d.ID)
+	}
+
+	if d.LocalPath != "" {
+		add(filepath.Base(filepath.Dir(d.LocalPath)))
+	}
+
+	return out
+}
+
+func packageFilenameForKind(files []string, kind string) string {
+	for _, name := range files {
+		switch kind {
+		case "video":
+			if strings.HasPrefix(strings.ToLower(name), "video.") {
+				return name
+			}
+		case "thumbnail":
+			if strings.HasPrefix(strings.ToLower(name), "thumbnail.") {
+				return name
+			}
+		case "metadata":
+			if strings.EqualFold(name, "metadata.json") || strings.HasSuffix(strings.ToLower(name), ".info.json") {
+				return name
+			}
+		}
+	}
+	return ""
+}
+
+func deriveMetadataKey(sourceKey string) string {
+	sourceKey = strings.TrimSpace(sourceKey)
+	if sourceKey == "" {
+		return ""
+	}
+
+	normalized := path.Clean(filepath.ToSlash(sourceKey))
+	if normalized == "." || normalized == "/" {
+		return "metadata.json"
+	}
+	return path.Join(path.Dir(normalized), "metadata.json")
+}
+
+func localStoredPath(root, key string) string {
+	if strings.TrimSpace(root) == "" {
+		root = "/downloads"
+	}
+	return filepath.Join(root, filepath.FromSlash(key))
 }
