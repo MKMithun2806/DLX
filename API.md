@@ -144,6 +144,34 @@ Server-Sent Events stream. Emits a `connected` event on open, then a
 `job_update` event (JSON payload `{download_id, state, progress, message}`)
 every time a job's state changes.
 
+## Watcher
+
+### `GET /watch/{id}`
+
+Renders the dedicated content viewer for a completed download.
+
+### `GET /api/watch/{id}`
+
+Returns the watch payload used by the viewer:
+
+```json
+{
+  "download": { "...": "..." },
+  "video_url": "/api/watch/f47ac10b.../asset/video",
+  "thumbnail_url": "/api/watch/f47ac10b.../asset/thumbnail",
+  "metadata_url": "/api/watch/f47ac10b.../asset/metadata",
+  "metadata": { "...": "..." }
+}
+```
+
+### `GET /api/watch/{id}/asset/{kind}`
+
+Returns one of `video`, `thumbnail`, or `metadata`.
+
+- Local storage serves the file directly.
+- S3 storage redirects video/thumbnail requests to a short-lived presigned URL.
+- Metadata is returned as JSON from the stored `metadata.json` payload.
+
 ---
 
 ## Settings (global proxy)

@@ -76,6 +76,7 @@ func main() {
 	r.Handle("/static/*", http.StripPrefix("/static/", fs))
 
 	r.Get("/", app.Dashboard)
+	r.Get("/watch/{id}", app.Watch)
 	r.Get("/events", app.JobsStream)
 
 	r.Route("/api", func(r chi.Router) {
@@ -103,6 +104,8 @@ func main() {
 		r.Post("/downloads/{id}/delete", app.DeleteDownload) // form-friendly alias
 		r.Get("/downloads/{id}/file", app.DownloadFile)
 		r.Post("/downloads/{id}/retry", app.RetryDownload)
+		r.Get("/watch/{id}", app.WatchData)
+		r.Get("/watch/{id}/asset/{kind}", app.WatchAsset)
 		r.Post("/recovery", app.RecoverStorage)
 
 		r.Get("/logs", app.Logs)

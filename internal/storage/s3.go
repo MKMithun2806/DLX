@@ -8,6 +8,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -34,6 +35,7 @@ type S3Backend struct {
 	cfg      S3Config
 	client   *s3.Client
 	uploader *manager.Uploader
+	presign  *s3.PresignClient
 }
 
 func NewS3(ctx context.Context, cfg S3Config) (*S3Backend, error) {
@@ -61,6 +63,7 @@ func NewS3(ctx context.Context, cfg S3Config) (*S3Backend, error) {
 		cfg:      cfg,
 		client:   client,
 		uploader: manager.NewUploader(client),
+		presign:  s3.NewPresignClient(client),
 	}, nil
 }
 
@@ -136,6 +139,25 @@ func (s *S3Backend) ReadFile(ctx context.Context, key string) ([]byte, error) {
 	}
 	defer out.Body.Close()
 	return io.ReadAll(out.Body)
+}
+
+// PresignGetObject creates a short-lived signed URL for a stored object.
+// It is used by the watch page so browsers can stream S3-backed media
+// directly with native range support.
+func (s *S3Backend) PresignGetObject(ctx context.Context, key string, expires time.Duration) (string, error) {
+	if expires <= 0 {
+		expires = 15 * time.Minute
+	}
+	out, err := s.presign.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.cfg.Bucket),
+		Key:    aws.String(key),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = expires
+	})
+	if err != nil {
+		return "", fmt.Errorf("s3 presign: %w", err)
+	}
+	return out.URL, nil
 }
 
 // ListPackageRoots enumerates package roots by looking for metadata.json

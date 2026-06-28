@@ -13,6 +13,7 @@
   </td>
   <td class="text-slate-500 whitespace-nowrap">{{if .Filesize}}{{.Filesize}} B{{else}}-{{end}}</td>
   <td class="whitespace-nowrap text-right pr-3">
+    {{if eq .Status "complete"}}<a href="/watch/{{.ID}}" class="text-sky-400 hover:underline mr-2">watch</a>{{end}}
     {{if eq .StorageType "local"}}<a href="/api/downloads/{{.ID}}/file" class="text-emerald-400 hover:underline mr-2">get</a>{{end}}
     {{if eq .Status "failed"}}<button hx-post="/api/downloads/{{.ID}}/retry" hx-target="#dl-{{.ID}}" hx-swap="outerHTML" class="text-amber-400 hover:underline mr-2">retry</button>{{end}}
     <button hx-delete="/api/downloads/{{.ID}}" hx-target="closest tr" hx-swap="outerHTML" class="text-red-400 hover:underline">delete</button>
