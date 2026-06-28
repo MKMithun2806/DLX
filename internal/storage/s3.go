@@ -3,7 +3,10 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -86,6 +89,108 @@ func (s *S3Backend) Store(ctx context.Context, localSourcePath, key string) (str
 	}
 	_ = os.Remove(localSourcePath)
 	return objectKey, nil
+}
+
+// StorePackage uploads the package files under a single backend-relative
+// folder. The returned keys mirror the object layout, e.g.
+// videos/<id>/video.mp4.
+func (s *S3Backend) StorePackage(ctx context.Context, pkg Package) (PackageResult, error) {
+	root := s.packageRoot(pkg.ID)
+	res := PackageResult{PackageRoot: root}
+	for _, file := range pkg.Files {
+		if file.SourcePath == "" {
+			return PackageResult{}, fmt.Errorf("s3 package store: missing source for %s", file.Name)
+		}
+		key := path.Join(root, file.Name)
+		stored, err := s.Store(ctx, file.SourcePath, key)
+		if err != nil {
+			return PackageResult{}, err
+		}
+		switch file.Name {
+		case "video.mp4", "video.webm", "video.mkv", "video.mov", "video.avi":
+			res.VideoKey = stored
+		case "metadata.json":
+			res.MetadataKey = stored
+		default:
+			if res.ThumbnailKey == "" {
+				res.ThumbnailKey = stored
+			}
+		}
+	}
+	return res, nil
+}
+
+// ReadFile downloads a backend object into memory. It is used during
+// recovery to reconstruct the SQLite database from storage.
+func (s *S3Backend) ReadFile(ctx context.Context, key string) ([]byte, error) {
+	objectKey := s.withPrefix(key)
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.cfg.Bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer out.Body.Close()
+	return io.ReadAll(out.Body)
+}
+
+// ListPackageRoots enumerates package roots by looking for metadata.json
+// objects and trimming the filename.
+func (s *S3Backend) ListPackageRoots(ctx context.Context) ([]string, error) {
+	prefix := s.packagePrefix()
+	if prefix != "" {
+		prefix += "/"
+	}
+	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.cfg.Bucket),
+		Prefix: aws.String(prefix),
+	})
+	roots := make([]string, 0)
+	seen := map[string]struct{}{}
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, obj := range page.Contents {
+			key := aws.ToString(obj.Key)
+			if !strings.HasSuffix(key, "/metadata.json") && key != "metadata.json" {
+				continue
+			}
+			root := strings.TrimSuffix(key, "metadata.json")
+			root = strings.TrimSuffix(root, "/")
+			if root == "" {
+				continue
+			}
+			root = strings.TrimSuffix(root, "/")
+			if _, ok := seen[root]; ok {
+				continue
+			}
+			seen[root] = struct{}{}
+			roots = append(roots, root)
+		}
+	}
+	return roots, nil
+}
+
+func (s *S3Backend) packagePrefix() string {
+	if s.cfg.Prefix != "" {
+		return trimSlash(s.cfg.Prefix)
+	}
+	return "videos"
+}
+
+func (s *S3Backend) packageRoot(id string) string {
+	return path.Join(s.packagePrefix(), id)
+}
+
+func (s *S3Backend) withPrefix(key string) string {
+	objectKey := key
+	if s.cfg.Prefix != "" {
+		objectKey = path.Join(trimSlash(s.cfg.Prefix), key)
+	}
+	return objectKey
 }
 
 func trimSlash(s string) string {

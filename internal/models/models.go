@@ -59,24 +59,28 @@ type Format struct {
 
 // Download is a persisted row describing a requested/completed download.
 type Download struct {
-	ID          string    `json:"id"`
-	SourceURL   string    `json:"source_url"`
-	Title       string    `json:"title"`
-	Thumbnail   string    `json:"thumbnail"`
-	Uploader    string    `json:"uploader"`
-	Duration    int       `json:"duration"`
-	FormatID    string    `json:"format_id"`
-	Resolution  string    `json:"resolution"`
-	Filesize    int64     `json:"filesize"`
-	StorageType string    `json:"storage_type"`
-	LocalPath   string    `json:"local_path"`
-	S3Key       string    `json:"s3_key"`
-	Status      string    `json:"status"`
-	Error       string    `json:"error"`
-	ProxyMode   string    `json:"proxy_mode"`
-	CustomProxy string    `json:"custom_proxy"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             string    `json:"id"`
+	SourceURL      string    `json:"source_url"`
+	Title          string    `json:"title"`
+	Thumbnail      string    `json:"thumbnail"`
+	Uploader       string    `json:"uploader"`
+	Duration       int       `json:"duration"`
+	FormatID       string    `json:"format_id"`
+	Resolution     string    `json:"resolution"`
+	Filesize       int64     `json:"filesize"`
+	StorageType    string    `json:"storage_type"`
+	LocalPath      string    `json:"local_path"`
+	S3Key          string    `json:"s3_key"`
+	VideoS3Key     string    `json:"video_s3_key"`
+	ThumbnailS3Key string    `json:"thumbnail_s3_key"`
+	MetadataS3Key  string    `json:"metadata_s3_key"`
+	MetadataJSON   string    `json:"metadata_json"`
+	Status         string    `json:"status"`
+	Error          string    `json:"error"`
+	ProxyMode      string    `json:"proxy_mode"`
+	CustomProxy    string    `json:"custom_proxy"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // Job tracks the live progress of a download/upload pipeline run.
