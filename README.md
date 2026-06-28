@@ -78,6 +78,7 @@ The server defaults to `:8080`, a SQLite DB at `/config/app.db`, and downloads i
 3. **Storage tab** - drag the slider between **Local Only** and **S3 Only**, then fill in the local download path or your S3-compatible credentials (endpoint, region, bucket, access/secret key, prefix, path-style toggle). The secret key field is write-only - leave it blank on subsequent saves to keep the existing encrypted value. Use the recovery action there to rebuild SQLite from storage if the database is lost.
 4. **History tab** - see every download with its status, storage backend, size, and package keys; download local files directly, retry failed jobs, or delete records (local package folders are removed from disk too).
 5. **Logs tab** - filter by category (download / yt-dlp / upload / proxy) and free-text search across everything that's been logged.
+6. **Watch page** - click `watch` from a completed download to open the dedicated player view with thumbnail, metadata, and storage-backed media playback.
 
 ## Project layout
 
