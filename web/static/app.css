@@ -3,7 +3,9 @@
 .htmx-request.htmx-indicator { display: inline; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb { background: #1e293b; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-body { background-image: radial-gradient(circle at 50% 0%, rgba(16,185,129,0.06), transparent 60%); }
+body { background-image: radial-gradient(circle at 50% 0%, rgba(5,150,105,0.03), transparent 60%); transition: background-color 0.2s ease, color 0.2s ease; }
+.dark body { background-image: radial-gradient(circle at 50% 0%, rgba(16,185,129,0.06), transparent 60%); }

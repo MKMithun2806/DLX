@@ -1,9 +1,9 @@
 {{range .Logs}}
 <div class="py-0.5">
-  <span class="text-slate-600">{{.CreatedAt.Format "15:04:05"}}</span>
-  <span class="text-emerald-500">[{{.Category}}]</span>
-  <span class="text-slate-300">{{.Message}}</span>
+  <span class="text-slate-450 dark:text-slate-600">{{.CreatedAt.Format "15:04:05"}}</span>
+  <span class="text-emerald-600 dark:text-emerald-500 font-medium">[{{.Category}}]</span>
+  <span class="text-slate-700 dark:text-slate-300">{{.Message}}</span>
 </div>
 {{else}}
-<p class="text-slate-500">No log entries.</p>
+<p class="text-slate-550 dark:text-slate-500">No log entries.</p>
 {{end}}

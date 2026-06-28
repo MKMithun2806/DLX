@@ -1,10 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>{{if .Download.Title}}{{.Download.Title}} · Watch{{else}}Watch · video-downloader{{end}}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/3.4.1/tailwind.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class'
+  };
+</script>
+<script>
+  if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+</script>
 <script>
   function getCsrfToken() {
     const m = document.cookie.match(/(?:^|;\s*)vd_csrf=([^;]+)/);
@@ -13,36 +25,43 @@
 </script>
 <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100" data-download-id="{{.Download.ID}}">
-  <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_44%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.12),_transparent_28%)]"></div>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200" data-download-id="{{.Download.ID}}">
+  <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top,_rgba(5,150,105,0.06),_transparent_44%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.04),_transparent_28%)] dark:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_44%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.12),_transparent_28%)]"></div>
 
-  <header class="relative z-10 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
+  <header class="relative z-10 border-b border-slate-200 dark:border-slate-800/80 bg-white/85 dark:bg-slate-950/80 backdrop-blur-xl sticky top-0">
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
       <div>
-        <p class="text-xs uppercase tracking-[0.35em] text-slate-500">watch / {{.Download.ID}}</p>
-        <h1 id="watch-title" class="mt-1 text-lg font-semibold text-emerald-300 sm:text-2xl">
+        <p class="text-xs uppercase tracking-[0.35em] text-slate-400 dark:text-slate-500">watch / {{.Download.ID}}</p>
+        <h1 id="watch-title" class="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-300 sm:text-2xl">
           {{if .Download.Title}}{{.Download.Title}}{{else}}Loading content…{{end}}
         </h1>
-        <p id="watch-subtitle" class="mt-1 text-sm text-slate-400">{{if .Download.Uploader}}{{.Download.Uploader}}{{else}}{{.Download.SourceURL}}{{end}}</p>
+        <p id="watch-subtitle" class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{if .Download.Uploader}}{{.Download.Uploader}}{{else}}{{.Download.SourceURL}}{{end}}</p>
       </div>
-      <a href="/" class="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 transition hover:border-emerald-500 hover:text-emerald-300">
-        Back to dashboard
-      </a>
+      <div class="flex items-center gap-3">
+        <a href="/" class="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/80 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 transition hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-300 font-semibold shadow-sm dark:shadow-none">
+          Back to dashboard
+        </a>
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none rounded-lg text-sm p-2 transition-colors" aria-label="Toggle Theme">
+          <svg id="theme-toggle-dark-icon" class="hidden w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+          <svg id="theme-toggle-light-icon" class="hidden w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+        </button>
+      </div>
     </div>
   </header>
 
   <main class="relative z-10 mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
     <section class="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_360px]">
       <div class="space-y-6">
-        <article class="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/70 shadow-[0_20px_80px_rgba(2,6,23,0.45)]">
-          <div class="flex items-center justify-between border-b border-slate-800/80 px-5 py-4">
+        <article class="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/70 shadow-sm dark:shadow-[0_20px_80px_rgba(2,6,23,0.45)]">
+          <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 px-5 py-4">
             <div class="flex items-center gap-3">
-              <span id="watch-status" class="inline-flex items-center rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">
+              <span id="watch-status" class="inline-flex items-center rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
                 {{.Download.Status}}
               </span>
-              <span id="watch-storage" class="text-xs uppercase tracking-[0.28em] text-slate-500">{{if .Download.StorageType}}{{.Download.StorageType}}{{else}}pending{{end}}</span>
+              <span id="watch-storage" class="text-xs uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">{{if .Download.StorageType}}{{.Download.StorageType}}{{else}}pending{{end}}</span>
             </div>
-            <span id="watch-duration" class="text-xs text-slate-500">{{if .Download.Duration}}{{.Download.Duration}}s{{else}}duration unknown{{end}}</span>
+            <span id="watch-duration" class="text-xs text-slate-400 dark:text-slate-500">{{if .Download.Duration}}{{.Download.Duration}}s{{else}}duration unknown{{end}}</span>
           </div>
 
           <div class="relative bg-black">
@@ -56,55 +75,55 @@
             >
               <source src="/api/watch/{{.Download.ID}}/asset/video" />
             </video>
-            <div id="watch-banner" class="pointer-events-none absolute inset-x-4 bottom-4 hidden rounded-2xl border border-amber-500/40 bg-slate-950/85 px-4 py-3 text-sm text-amber-200 shadow-lg shadow-black/25"></div>
+            <div id="watch-banner" class="pointer-events-none absolute inset-x-4 bottom-4 hidden rounded-2xl border border-amber-500/40 bg-white/95 dark:bg-slate-950/85 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 shadow-lg shadow-black/25"></div>
           </div>
         </article>
 
-        <article class="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/60 p-5">
+        <article class="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 p-5 shadow-sm dark:shadow-none">
           <div class="flex items-start gap-4">
             <img
               id="watch-thumb"
               src="{{if .Download.Thumbnail}}{{.Download.Thumbnail}}{{end}}"
               alt="{{.Download.Title}} thumbnail"
-              class="h-24 w-40 rounded-2xl border border-slate-800 object-cover bg-slate-950"
+              class="h-24 w-40 rounded-2xl border border-slate-200 dark:border-slate-800 object-cover bg-slate-100 dark:bg-slate-950"
             />
             <div class="min-w-0 flex-1">
-              <p class="text-xs uppercase tracking-[0.28em] text-slate-500">source</p>
-              <p id="watch-source" class="mt-2 break-all text-sm text-slate-300">{{.Download.SourceURL}}</p>
+              <p class="text-xs uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500">source</p>
+              <p id="watch-source" class="mt-2 break-all text-sm text-slate-605 dark:text-slate-300">{{.Download.SourceURL}}</p>
               <div id="watch-badges" class="mt-4 flex flex-wrap gap-2">
-                <span class="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs text-slate-300">
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/80 px-3 py-1 text-xs text-slate-600 dark:text-slate-300">
                   {{if .Download.FormatID}}format {{.Download.FormatID}}{{else}}format unknown{{end}}
                 </span>
-                <span class="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs text-slate-300">
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/80 px-3 py-1 text-xs text-slate-600 dark:text-slate-300">
                   {{if .Download.Resolution}}{{.Download.Resolution}}{{else}}resolution unknown{{end}}
                 </span>
-                <span class="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1 text-xs text-slate-300">
+                <span class="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/80 px-3 py-1 text-xs text-slate-600 dark:text-slate-300">
                   {{if .Download.Filesize}}{{.Download.Filesize}} B{{else}}size unknown{{end}}
                 </span>
               </div>
             </div>
           </div>
 
-          <div id="watch-state" class="mt-5 rounded-2xl border border-dashed border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
+          <div id="watch-state" class="mt-5 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 p-4 text-sm text-slate-550 dark:text-slate-400">
             Loading metadata and playback details…
           </div>
         </article>
       </div>
 
       <aside class="space-y-6">
-        <article class="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-5">
+        <article class="rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 p-5 shadow-sm dark:shadow-none">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm uppercase tracking-[0.28em] text-emerald-300">Metadata</h2>
-            <span id="watch-metadata-error" class="text-xs text-amber-300"></span>
+            <h2 class="text-sm uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-300">Metadata</h2>
+            <span id="watch-metadata-error" class="text-xs text-amber-600 dark:text-amber-300"></span>
           </div>
           <dl id="watch-summary" class="mt-4 grid gap-3 text-sm"></dl>
         </article>
 
-        <article class="overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/60">
-          <div class="border-b border-slate-800/80 px-5 py-4">
-            <h2 class="text-sm uppercase tracking-[0.28em] text-emerald-300">Raw metadata</h2>
+        <article class="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 shadow-sm dark:shadow-none">
+          <div class="border-b border-slate-200 dark:border-slate-800/80 px-5 py-4">
+            <h2 class="text-sm uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-300">Raw metadata</h2>
           </div>
-          <pre id="watch-raw" class="max-h-[32rem] overflow-auto px-5 py-4 text-xs leading-6 text-slate-300"></pre>
+          <pre id="watch-raw" class="max-h-[32rem] overflow-auto px-5 py-4 text-xs leading-6 text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-transparent"></pre>
         </article>
       </aside>
     </section>
@@ -112,5 +131,39 @@
 
   <script src="https://cdn.vidstack.io/player" defer></script>
   <script src="/static/watch.js" defer></script>
+  <script>
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+    const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+    if (document.documentElement.classList.contains('dark')) {
+      themeToggleLightIcon.classList.remove('hidden');
+    } else {
+      themeToggleDarkIcon.classList.remove('hidden');
+    }
+
+    themeToggleBtn.addEventListener('click', function() {
+      themeToggleDarkIcon.classList.toggle('hidden');
+      themeToggleLightIcon.classList.toggle('hidden');
+
+      if (localStorage.getItem('color-theme')) {
+        if (localStorage.getItem('color-theme') === 'light') {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('color-theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('color-theme', 'light');
+        }
+      } else {
+        if (document.documentElement.classList.contains('dark')) {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('color-theme', 'light');
+        } else {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('color-theme', 'dark');
+        }
+      }
+    });
+  </script>
 </body>
 </html>

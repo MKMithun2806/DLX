@@ -62,14 +62,14 @@
     container.replaceChildren();
     rows.forEach(function (row) {
       var wrapper = document.createElement('div');
-      wrapper.className = 'rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3';
+      wrapper.className = 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/70 px-4 py-3 shadow-sm dark:shadow-none';
 
       var label = document.createElement('dt');
-      label.className = 'text-[11px] uppercase tracking-[0.28em] text-slate-500';
+      label.className = 'text-[11px] uppercase tracking-[0.28em] text-slate-400 dark:text-slate-500';
       label.textContent = row[0];
 
       var value = document.createElement('dd');
-      value.className = 'mt-1 break-words text-sm text-slate-200';
+      value.className = 'mt-1 break-words text-sm text-slate-800 dark:text-slate-200';
       value.textContent = normalizeValue(row[1]);
 
       wrapper.appendChild(label);
