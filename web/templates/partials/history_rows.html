@@ -1,24 +1,24 @@
 {{range .Downloads}}
-<tr class="border-b border-slate-800/50 hover:bg-slate-900/40" id="dl-{{.ID}}">
-  <td class="py-2 px-3 max-w-[14rem] truncate" title="{{.Title}}">{{if .Title}}{{.Title}}{{else}}(scanning…){{end}}</td>
-  <td class="max-w-[12rem] truncate text-slate-500" title="{{.SourceURL}}">{{.SourceURL}}</td>
-  <td class="text-slate-500 whitespace-nowrap">{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
-  <td class="text-slate-500">{{if .StorageType}}{{.StorageType}}{{else}}-{{end}}</td>
+<tr class="border-b border-slate-200 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-900/40 text-slate-700 dark:text-slate-300" id="dl-{{.ID}}">
+  <td class="py-2 px-3 max-w-[14rem] truncate text-slate-850 dark:text-slate-200" title="{{.Title}}">{{if .Title}}{{.Title}}{{else}}(scanning…){{end}}</td>
+  <td class="max-w-[12rem] truncate text-slate-500 dark:text-slate-450" title="{{.SourceURL}}">{{.SourceURL}}</td>
+  <td class="text-slate-500 dark:text-slate-450 whitespace-nowrap">{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+  <td class="text-slate-500 dark:text-slate-450">{{if .StorageType}}{{.StorageType}}{{else}}-{{end}}</td>
   <td>
-    {{if eq .Status "complete"}}<span class="text-emerald-400">● complete</span>
-    {{else if eq .Status "failed"}}<span class="text-red-400" title="{{.Error}}">● failed</span>
-    {{else if eq .Status "downloading"}}<span class="text-amber-400">● downloading</span>
-    {{else if eq .Status "uploading"}}<span class="text-sky-400">● uploading</span>
-    {{else}}<span class="text-slate-500">● queued</span>{{end}}
+    {{if eq .Status "complete"}}<span class="text-emerald-600 dark:text-emerald-400">● complete</span>
+    {{else if eq .Status "failed"}}<span class="text-red-600 dark:text-red-400" title="{{.Error}}">● failed</span>
+    {{else if eq .Status "downloading"}}<span class="text-amber-600 dark:text-amber-400">● downloading</span>
+    {{else if eq .Status "uploading"}}<span class="text-sky-600 dark:text-sky-400">● uploading</span>
+    {{else}}<span class="text-slate-500 dark:text-slate-500">● queued</span>{{end}}
   </td>
-  <td class="text-slate-500 whitespace-nowrap">{{if .Filesize}}{{.Filesize}} B{{else}}-{{end}}</td>
+  <td class="text-slate-500 dark:text-slate-450 whitespace-nowrap">{{if .Filesize}}{{.Filesize}} B{{else}}-{{end}}</td>
   <td class="whitespace-nowrap text-right pr-3">
-    {{if eq .Status "complete"}}<a href="/watch/{{.ID}}" class="text-sky-400 hover:underline mr-2">watch</a>{{end}}
-    {{if eq .StorageType "local"}}<a href="/api/downloads/{{.ID}}/file" class="text-emerald-400 hover:underline mr-2">get</a>{{end}}
-    {{if eq .Status "failed"}}<button hx-post="/api/downloads/{{.ID}}/retry" hx-target="#dl-{{.ID}}" hx-swap="outerHTML" class="text-amber-400 hover:underline mr-2">retry</button>{{end}}
-    <button hx-delete="/api/downloads/{{.ID}}" hx-target="closest tr" hx-swap="outerHTML" class="text-red-400 hover:underline">delete</button>
+    {{if eq .Status "complete"}}<a href="/watch/{{.ID}}" class="text-sky-600 dark:text-sky-400 hover:underline mr-2 font-medium">watch</a>{{end}}
+    {{if eq .StorageType "local"}}<a href="/api/downloads/{{.ID}}/file" class="text-emerald-600 dark:text-emerald-400 hover:underline mr-2 font-medium">get</a>{{end}}
+    {{if eq .Status "failed"}}<button hx-post="/api/downloads/{{.ID}}/retry" hx-target="#dl-{{.ID}}" hx-swap="outerHTML" class="text-amber-600 dark:text-amber-400 hover:underline mr-2 font-medium">retry</button>{{end}}
+    <button hx-delete="/api/downloads/{{.ID}}" hx-target="closest tr" hx-swap="outerHTML" class="text-red-600 dark:text-red-400 hover:underline font-medium">delete</button>
   </td>
 </tr>
 {{else}}
-<tr><td colspan="7" class="py-4 px-3 text-slate-500 text-sm">No downloads yet.</td></tr>
+<tr><td colspan="7" class="py-4 px-3 text-slate-500 dark:text-slate-500 text-sm">No downloads yet.</td></tr>
 {{end}}

@@ -1,10 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Video Downloader</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/3.4.1/tailwind.min.js"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class'
+  };
+</script>
+<script>
+  if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.12/htmx.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js"></script>
 <script>
@@ -18,16 +30,22 @@
 </script>
 <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen font-mono" x-data="{ tab: 'dashboard' }">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 min-h-screen font-mono transition-colors duration-200" x-data="{ tab: 'dashboard' }">
 
-  <header class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-    <h1 class="text-xl font-bold text-emerald-400">▸ video-downloader<span class="text-slate-500">.webui</span></h1>
-    <nav class="flex gap-4 text-sm">
-      <button :class="tab === 'dashboard' ? 'text-emerald-400' : 'text-slate-400'" @click="tab = 'dashboard'">Dashboard</button>
-      <button :class="tab === 'settings' ? 'text-emerald-400' : 'text-slate-400'" @click="tab = 'settings'">Proxy Settings</button>
-      <button :class="tab === 'storage' ? 'text-emerald-400' : 'text-slate-400'" @click="tab = 'storage'">Storage</button>
-      <button :class="tab === 'history' ? 'text-emerald-400' : 'text-slate-400'" @click="tab = 'history'">History</button>
-      <button :class="tab === 'logs' ? 'text-emerald-400' : 'text-slate-400'" @click="tab = 'logs'">Logs</button>
+  <header class="border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between bg-white dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+    <h1 class="text-xl font-bold text-emerald-600 dark:text-emerald-400">▸ video-downloader<span class="text-slate-400 dark:text-slate-500">.webui</span></h1>
+    <nav class="flex gap-4 text-sm items-center">
+      <button :class="tab === 'dashboard' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400'" @click="tab = 'dashboard'">Dashboard</button>
+      <button :class="tab === 'settings' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400'" @click="tab = 'settings'">Proxy Settings</button>
+      <button :class="tab === 'storage' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400'" @click="tab = 'storage'">Storage</button>
+      <button :class="tab === 'history' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400'" @click="tab = 'history'">History</button>
+      <button :class="tab === 'logs' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400'" @click="tab = 'logs'">Logs</button>
+      
+      <!-- Theme Toggle Button -->
+      <button id="theme-toggle" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none rounded-lg text-sm p-2 transition-colors ml-2" aria-label="Toggle Theme">
+        <svg id="theme-toggle-dark-icon" class="hidden w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+        <svg id="theme-toggle-light-icon" class="hidden w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+      </button>
     </nav>
   </header>
 
@@ -35,26 +53,26 @@
 
     <!-- ===================== DASHBOARD ===================== -->
     <section x-show="tab === 'dashboard'">
-      <div class="border border-slate-800 rounded-lg p-4 mb-6 bg-slate-900/50">
-        <label class="block text-sm text-slate-400 mb-2">Paste video URLs (one per line, playlists supported)</label>
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg p-4 mb-6 bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none">
+        <label class="block text-sm text-slate-500 dark:text-slate-400 mb-2">Paste video URLs (one per line, playlists supported)</label>
         <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="innerHTML" hx-indicator="#scan-spinner">
           <textarea name="urls" rows="4" placeholder="https://youtube.com/watch?v=abc&#10;https://youtube.com/watch?v=xyz"
-            class="w-full bg-slate-950 border border-slate-700 rounded p-3 text-sm focus:outline-none focus:border-emerald-500"></textarea>
+            class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-650 dark:focus:ring-emerald-500"></textarea>
           <div class="flex items-center gap-3 mt-3">
-            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded text-sm">
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white dark:text-slate-950 font-bold px-4 py-2 rounded text-sm transition-colors">
               Scan
             </button>
-            <span id="scan-spinner" class="htmx-indicator text-xs text-slate-500">scanning…</span>
+            <span id="scan-spinner" class="htmx-indicator text-xs text-slate-400 dark:text-slate-500">scanning…</span>
           </div>
         </form>
       </div>
 
       <div id="scan-results" class="grid md:grid-cols-2 gap-4 mb-8"></div>
 
-      <h2 class="text-emerald-400 text-sm uppercase tracking-wider mb-2">Active &amp; Recent Jobs</h2>
-      <div class="border border-slate-800 rounded-lg bg-slate-900/30 overflow-x-auto">
+      <h2 class="text-emerald-650 dark:text-emerald-400 text-sm uppercase tracking-wider mb-2 font-semibold">Active &amp; Recent Jobs</h2>
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900/30 overflow-x-auto shadow-sm dark:shadow-none">
         <table class="w-full text-sm">
-          <thead class="text-slate-500 text-left border-b border-slate-800">
+          <thead class="text-slate-400 dark:text-slate-500 text-left border-b border-slate-200 dark:border-slate-800">
             <tr><th class="py-2 px-3">Title</th><th>Source</th><th>Date</th><th>Storage</th><th>Status</th><th>Size</th><th></th></tr>
           </thead>
           <tbody id="job-list" hx-get="/api/jobs" hx-trigger="load" hx-swap="innerHTML">
@@ -66,53 +84,53 @@
 
     <!-- ===================== PROXY SETTINGS ===================== -->
     <section x-show="tab === 'settings'">
-      <div class="border border-slate-800 rounded-lg p-4 mb-6 bg-slate-900/50">
-        <h2 class="text-emerald-400 text-sm uppercase tracking-wider mb-4">Global Proxy</h2>
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg p-4 mb-6 bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none">
+        <h2 class="text-emerald-650 dark:text-emerald-400 text-sm uppercase tracking-wider mb-4 font-semibold">Global Proxy</h2>
         <form hx-post="/api/settings" hx-target="#settings-msg" hx-swap="innerHTML" class="grid md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">HTTP Proxy</label>
+            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">HTTP Proxy</label>
             <input name="proxy_http" value="{{.Settings.ProxyHTTP}}" placeholder="http://proxy.example.com:8080"
-              class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" />
+              class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" />
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">HTTPS Proxy</label>
+            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">HTTPS Proxy</label>
             <input name="proxy_https" value="{{.Settings.ProxyHTTPS}}" placeholder="http://proxy.example.com:8080"
-              class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" />
+              class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" />
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">SOCKS5 Proxy</label>
+            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">SOCKS5 Proxy</label>
             <input name="proxy_socks5" value="{{.Settings.ProxySOCKS5}}" placeholder="socks5://127.0.0.1:9050"
-              class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" />
+              class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" />
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Rotation Mode</label>
-            <select name="rotation_mode" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm">
+            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Rotation Mode</label>
+            <select name="rotation_mode" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500">
               <option value="random" {{if eq .Settings.RotationMode "random"}}selected{{end}}>Random</option>
               <option value="round_robin" {{if eq .Settings.RotationMode "round_robin"}}selected{{end}}>Round Robin</option>
               <option value="sticky" {{if eq .Settings.RotationMode "sticky"}}selected{{end}}>Sticky Session</option>
             </select>
           </div>
           <div class="flex items-center gap-2 md:col-span-2">
-            <input type="checkbox" name="direct_fallback" id="direct_fallback" {{if .Settings.DirectFallback}}checked{{end}} class="accent-emerald-500" />
-            <label for="direct_fallback" class="text-sm">Use direct connection if proxy fails</label>
+            <input type="checkbox" name="direct_fallback" id="direct_fallback" {{if .Settings.DirectFallback}}checked{{end}} class="accent-emerald-600 dark:accent-emerald-500" />
+            <label for="direct_fallback" class="text-sm text-slate-700 dark:text-slate-300">Use direct connection if proxy fails</label>
           </div>
           <div class="md:col-span-2 flex items-center gap-3">
-            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded text-sm">Save</button>
-            <span id="settings-msg"></span>
+            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white dark:text-slate-950 font-bold px-4 py-2 rounded text-sm transition-colors">Save</button>
+            <span id="settings-msg" class="text-sm"></span>
           </div>
         </form>
       </div>
 
-      <div class="border border-slate-800 rounded-lg p-4 bg-slate-900/50">
-        <h2 class="text-emerald-400 text-sm uppercase tracking-wider mb-4">Proxy Pool</h2>
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none">
+        <h2 class="text-emerald-650 dark:text-emerald-400 text-sm uppercase tracking-wider mb-4 font-semibold">Proxy Pool</h2>
         <form hx-post="/api/proxies" hx-target="#proxy-rows" hx-swap="innerHTML" hx-on::after-request="this.reset()"
               class="flex gap-2 mb-4">
-          <input name="name" placeholder="Name" required class="bg-slate-950 border border-slate-700 rounded p-2 text-sm flex-1" />
-          <input name="proxy_url" placeholder="http://user:pass@host:port" required class="bg-slate-950 border border-slate-700 rounded p-2 text-sm flex-[2]" />
-          <button type="submit" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded text-sm">Add Proxy</button>
+          <input name="name" placeholder="Name" required class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500 flex-1" />
+          <input name="proxy_url" placeholder="http://user:pass@host:port" required class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500 flex-[2]" />
+          <button type="submit" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded text-sm transition-colors">Add Proxy</button>
         </form>
         <table class="w-full text-sm">
-          <thead class="text-slate-500 text-left">
+          <thead class="text-slate-400 dark:text-slate-500 text-left">
             <tr><th class="py-1">Name</th><th>Proxy URL</th><th>Enabled</th><th></th></tr>
           </thead>
           <tbody id="proxy-rows">
@@ -124,51 +142,51 @@
 
     <!-- ===================== STORAGE ===================== -->
     <section x-show="tab === 'storage'">
-      <div class="border border-slate-800 rounded-lg p-4 bg-slate-900/50" x-data="{ mode: '{{.Storage.Mode}}' }">
-        <h2 class="text-emerald-400 text-sm uppercase tracking-wider mb-4">Storage Mode</h2>
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none" x-data="{ mode: '{{.Storage.Mode}}' }">
+        <h2 class="text-emerald-655 dark:text-emerald-400 text-sm uppercase tracking-wider mb-4 font-semibold">Storage Mode</h2>
         <div class="flex items-center gap-4 mb-6 text-sm">
-          <span :class="mode === 'local' ? 'text-emerald-400' : 'text-slate-500'">Local Only</span>
+          <span :class="mode === 'local' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400 dark:text-slate-500'">Local Only</span>
           <input type="range" min="0" max="1" :value="mode === 's3' ? 1 : 0"
-                 @input="mode = $event.target.value === '1' ? 's3' : 'local'" class="accent-emerald-500" />
-          <span :class="mode === 's3' ? 'text-emerald-400' : 'text-slate-500'">S3 Only</span>
+                 @input="mode = $event.target.value === '1' ? 's3' : 'local'" class="accent-emerald-600 dark:accent-emerald-500" />
+          <span :class="mode === 's3' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400 dark:text-slate-500'">S3 Only</span>
         </div>
 
         <form hx-post="/api/storage" hx-target="#storage-msg" hx-swap="innerHTML" class="space-y-4">
           <input type="hidden" name="mode" :value="mode" />
 
           <div x-show="mode === 'local'">
-            <label class="block text-xs text-slate-400 mb-1">Download Path</label>
-            <input name="local_path" value="{{.Storage.LocalPath}}" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" />
+            <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Download Path</label>
+            <input name="local_path" value="{{.Storage.LocalPath}}" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" />
           </div>
 
           <div x-show="mode === 's3'" class="grid md:grid-cols-2 gap-4">
-            <div><label class="block text-xs text-slate-400 mb-1">Endpoint (blank = AWS S3)</label>
-              <input name="s3_endpoint" value="{{.Storage.S3Endpoint}}" placeholder="https://s3.us-west-002.backblazeb2.com" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" /></div>
-            <div><label class="block text-xs text-slate-400 mb-1">Region</label>
-              <input name="s3_region" value="{{.Storage.S3Region}}" placeholder="us-east-1" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" /></div>
-            <div><label class="block text-xs text-slate-400 mb-1">Bucket</label>
-              <input name="s3_bucket" value="{{.Storage.S3Bucket}}" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" /></div>
-            <div><label class="block text-xs text-slate-400 mb-1">Prefix</label>
-              <input name="s3_prefix" value="{{.Storage.S3Prefix}}" placeholder="videos/" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" /></div>
-            <div><label class="block text-xs text-slate-400 mb-1">Access Key</label>
-              <input name="s3_access_key" value="{{.Storage.S3AccessKey}}" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" /></div>
-            <div><label class="block text-xs text-slate-400 mb-1">Secret Key (leave blank to keep current)</label>
-              <input name="s3_secret_key" type="password" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-sm" /></div>
+            <div><label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Endpoint (blank = AWS S3)</label>
+              <input name="s3_endpoint" value="{{.Storage.S3Endpoint}}" placeholder="https://s3.us-west-002.backblazeb2.com" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" /></div>
+            <div><label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Region</label>
+              <input name="s3_region" value="{{.Storage.S3Region}}" placeholder="us-east-1" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" /></div>
+            <div><label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Bucket</label>
+              <input name="s3_bucket" value="{{.Storage.S3Bucket}}" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" /></div>
+            <div><label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Prefix</label>
+              <input name="s3_prefix" value="{{.Storage.S3Prefix}}" placeholder="videos/" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" /></div>
+            <div><label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Access Key</label>
+              <input name="s3_access_key" value="{{.Storage.S3AccessKey}}" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" /></div>
+            <div><label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Secret Key (leave blank to keep current)</label>
+              <input name="s3_secret_key" type="password" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500" /></div>
             <div class="flex items-center gap-2 md:col-span-2">
-              <input type="checkbox" name="s3_use_path_style" {{if .Storage.S3UsePathStyle}}checked{{end}} class="accent-emerald-500" />
-              <label class="text-sm">Use path-style addressing (required for most MinIO/self-hosted setups)</label>
+              <input type="checkbox" name="s3_use_path_style" {{if .Storage.S3UsePathStyle}}checked{{end}} class="accent-emerald-650 dark:accent-emerald-500" />
+              <label class="text-sm text-slate-700 dark:text-slate-300">Use path-style addressing (required for most MinIO/self-hosted setups)</label>
             </div>
           </div>
 
-          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded text-sm">Save Storage Settings</button>
-          <span id="storage-msg"></span>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white dark:text-slate-950 font-bold px-4 py-2 rounded text-sm transition-colors">Save Storage Settings</button>
+          <span id="storage-msg" class="text-sm"></span>
         </form>
 
-        <div class="mt-6 border-t border-slate-800 pt-4">
-          <h3 class="text-xs uppercase tracking-wider text-slate-500 mb-2">Recovery</h3>
+        <div class="mt-6 border-t border-slate-200 dark:border-slate-800 pt-4">
+          <h3 class="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 font-semibold">Recovery</h3>
           <form hx-post="/api/recovery" hx-target="#recovery-msg" hx-swap="innerHTML" class="flex items-center gap-3">
-            <button type="submit" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded text-sm">Rebuild SQLite from storage</button>
-            <span id="recovery-msg" class="text-sm text-slate-400"></span>
+            <button type="submit" class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded text-sm transition-colors">Rebuild SQLite from storage</button>
+            <span id="recovery-msg" class="text-sm text-slate-500 dark:text-slate-400"></span>
           </form>
         </div>
       </div>
@@ -176,9 +194,9 @@
 
     <!-- ===================== HISTORY ===================== -->
     <section x-show="tab === 'history'">
-      <div class="border border-slate-800 rounded-lg bg-slate-900/30 overflow-x-auto">
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-900/30 overflow-x-auto shadow-sm dark:shadow-none">
         <table class="w-full text-sm">
-          <thead class="text-slate-500 text-left border-b border-slate-800">
+          <thead class="text-slate-400 dark:text-slate-500 text-left border-b border-slate-200 dark:border-slate-800">
             <tr>
               <th class="py-2 px-3">Title</th><th>Source</th><th>Date</th><th>Storage</th><th>Status</th><th>Size</th><th></th>
             </tr>
@@ -193,23 +211,57 @@
     <!-- ===================== LOGS ===================== -->
     <section x-show="tab === 'logs'">
       <form hx-get="/api/logs" hx-target="#log-rows" hx-swap="innerHTML" class="flex gap-2 mb-4">
-        <select name="category" class="bg-slate-950 border border-slate-700 rounded p-2 text-sm">
+        <select name="category" class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500">
           <option value="all">All</option>
           <option value="download">Download</option>
           <option value="ytdlp">yt-dlp</option>
           <option value="upload">Upload</option>
           <option value="proxy">Proxy</option>
         </select>
-        <input name="q" placeholder="search logs…" class="bg-slate-950 border border-slate-700 rounded p-2 text-sm flex-1" />
-        <button class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded text-sm">Search</button>
+        <input name="q" placeholder="search logs…" class="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-600 dark:focus:border-emerald-500 flex-1" />
+        <button class="bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded text-sm transition-colors">Search</button>
       </form>
-      <div class="border border-slate-800 rounded-lg bg-slate-950 p-3 max-h-[70vh] overflow-y-auto text-xs leading-relaxed" id="log-rows" hx-get="/api/logs" hx-trigger="load" hx-swap="innerHTML"></div>
+      <div class="border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-950 p-3 max-h-[70vh] overflow-y-auto text-xs leading-relaxed text-slate-800 dark:text-slate-350 shadow-sm dark:shadow-none" id="log-rows" hx-get="/api/logs" hx-trigger="load" hx-swap="innerHTML"></div>
     </section>
 
   </main>
 
-  <footer class="text-center text-slate-600 text-xs py-6">Sleeper Cell of One ▸ self-hosted, no telemetry</footer>
+  <footer class="text-center text-slate-400 dark:text-slate-600 text-xs py-6">Sleeper Cell of One ▸ self-hosted, no telemetry</footer>
 
   <script src="/static/app.js"></script>
+  <script>
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+    const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+    if (document.documentElement.classList.contains('dark')) {
+      themeToggleLightIcon.classList.remove('hidden');
+    } else {
+      themeToggleDarkIcon.classList.remove('hidden');
+    }
+
+    themeToggleBtn.addEventListener('click', function() {
+      themeToggleDarkIcon.classList.toggle('hidden');
+      themeToggleLightIcon.classList.toggle('hidden');
+
+      if (localStorage.getItem('color-theme')) {
+        if (localStorage.getItem('color-theme') === 'light') {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('color-theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('color-theme', 'light');
+        }
+      } else {
+        if (document.documentElement.classList.contains('dark')) {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('color-theme', 'light');
+        } else {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('color-theme', 'dark');
+        }
+      }
+    });
+  </script>
 </body>
 </html>
